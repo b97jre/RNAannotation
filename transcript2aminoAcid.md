@@ -1,45 +1,75 @@
 Different code for how to run program
 =====================================
 
+Remember to write proper explanation in the markdown files that belong the to the script file. 
+
+
+
 Everythin here is specified how to run on uppmax. Lets start there and push for generality later.
 
 ORF finder
 ==========
 
-In: reference file (nt)
-
-Out: reference file (aa)
-
+In: 
+  test.fa (nt)
+Out: 
+  test.info (table)
+  test.peptide.fa (aa) 
+  test.ORFs.fa  (cds)
+  test.523prime.fa (transcript 5 to 3 prime)
 
 Code
-
+java -jar /glob/johanr/bin/HTStools.jar -p sequencehandling orfs -i test.fa
 
 
 Mapping of reads
 ================
 
-in: reads + reference file
-out: counts per contig per reads file ()
+in: 
+  reads + reference file
+
+out: 
+  
+  counts per contig per reads file ()
 
 code:
 
+  module load bioinfo-tools
+  module load bowtie2/2.2.3
+  module load samtools
+
+  bowtie2  --threads 16 -x {REFfile} -1 {ReadsDir}/{sample}_1.fastq -2 {ReadsDir}/{sample}_2.fastq --un-conc {ResultDir}/{sample}.noHit.fastq -S {ResultDir}/{sample}.sam
+
+
+  samtools view -bSh -o {ResultDir}/{sample}.bam {ResultDir}/{sample}.sam
+
+  samtools sort {ResultDir}/{sample}.bam {ResultDir}/{sample}.sorted 
+
+  samtools index {ResultDir}/{sample}.sorted.bam
+
+  samtools flagstat {ResultDir}/{sample}.sorted.bam > {ResultDir}/{sample}.sorted.flagstat
+
+  samtools idxstats {ResultDir}/{sample}.sorted.bam > {ResultDir}/{sample}.sorted.idxstats
+
+
+
+Rfam using Infernall
+====================
+  
+  *in* : fastaFile, RFAM_database
+
+  *out*:  fastaFile.PfamAB.hmm.hmmer 
+
+hmmscan --tblout test_0.PfamAB.hmm.hmmer.tmp /glob/johanr/references/Pfam/PfamAB.hmm test_0.fa
+
+
+Pfam using HMMer
 module load bioinfo-tools
-module load bowtie2/2.2.3
-module load samtools
-
-bowtie2  --threads 16 -x /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/references/bowtie2/human.sample123.trinity -1 /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/reads/human/7_111116_AD0341ACXX_137_5_index5_1.fastq -2 /gu
-lo/proj_nobackup/b2011098/private/deNovoAnnotation/reads/human/7_111116_AD0341ACXX_137_5_index5_2.fastq --un-conc /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_13
-7_5_index5__human.sample123.trinity.sam.noHit.fastq -S /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sam
-
-
-samtools view -bSh -o /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.bam /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sam
-samtools sort /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.bam /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sorted 
-samtools index /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sorted.bam
-samtools flagstat /gulo/proj_nobackup/b2011098/private/deNovoAnnotation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sorted.bam >/gulo/proj_nobackup/b2011098/private/deNovoAnnot
-ation/bowtie2/human/7_111116_AD0341ACXX_137_5_index5_/7_111116_AD0341ACXX_137_5_index5__human.sample123.trinity.sorted.bam.flagstat
-samtools idxstats ....
-
-
+module load hmmer/3.1b1-gcc
+# going to correct directory
+cd /gulo/glob/johanr/references/PineTranscripts/tmp
+hmmscan --tblout test_0.PfamAB.hmm.hmmer.tmp /glob/johanr/references/Pfam/PfamAB.hmm test_0.fa
+mv test_0.PfamAB.hmm.hmmer.tmp /gulo/glob/johanr/references/PineTranscripts/HMMER/test_0.PfamAB.hmm.hmmer
 
 
 
