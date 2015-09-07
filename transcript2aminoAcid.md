@@ -1,8 +1,6 @@
 Different code for how to run program
 =====================================
 
-Remember to write proper explanation in the markdown files that belong the to the script file. 
-
 
 
 Everythin here is specified how to run on uppmax. Lets start there and push for generality later.
