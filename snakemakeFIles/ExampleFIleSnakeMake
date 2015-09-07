@@ -1,0 +1,38 @@
+#Snakemake file
+
+
+rule check_length_hairpin:
+     input: prefix = MAPRNA + "/{sample}.sam" 
+     output: expand(MAPRNA + "/{{sample}}.{length}.sam", length = LENGTHS),MAPRNA + "/{sample}. 
+     shell: "cat {input} | java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling samSplitLengths -from {LIMIN} -to {LIMAX} -prefix {MAPRNA}/{wildcards.sample}"
+
+     
+ # sam2bam
+rule sam2bam:
+     input: MAPRNA + "/{sample}.{length}.sam"
+     output: MAPRNA + "/{sample}.{length}.bam"
+     shell: "samtools view -h -bS {input} -o {output}"
+     
+ # Sort the BAM files
+rule samtools_sort:
+     input: MAPRNA + "/{sample}.{length}.bam"
+     output: MAPRNA + "/{sample}.{length}.sort.bam"
+     shell: "samtools sort {input} {MAPRNA}/{wildcards.sample}.{wildcards.length}.sort" 
+
+
+# Index the sorted BAM files
+rule samtools_index:
+     input: MAPRNA + "/{sample}.{length}.sort.bam"     
+     output: MAPRNA + "/{sample}.{length}.sort.bam.bai"
+     shell: "samtools index {input}"
+     
+
+
+# Count all the mapped reads and merge them in a table and load them into R and do first QC
+rule count_all_miRNA_per_premiRNA:
+     input: bam = MAPRNA + "/{sample}.{length}.sort.bam", gff = ANNORNA
+     output: DERNA + "/{sample}.{length}.htseq_id_Stranded.htseq-count.sort.txt"
+     shell: "samtools view {input.bam}  |  awk -f /proj/b2014162/nobackup/private/scripts/fixSAMforHTseq.awk  | htseq-count  -t miRNA -i htseq_id -a 0 -f sam -r pos -s yes - {input.gff} > {output}"
+
+
+
