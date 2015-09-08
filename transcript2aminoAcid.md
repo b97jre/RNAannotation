@@ -55,14 +55,6 @@ code:
 
 ##Rfam using Infernall
 
-  **in:** 
-  
-  fastaFile, RFAM_database
-
-  **out:**
-  
-  fastaFile.PfamAB.hmm.hmmer 
-
 
 ```
 
@@ -79,6 +71,8 @@ hmmscan --tblout test_0.PfamAB.hmm.hmmer /glob/johanr/references/Pfam/PfamAB.hmm
   fastaFile, RFAM_database
 
   **out:**
+  
+  fastaFile.PfamAB.hmm.hmmer 
 
 
 
