@@ -1,0 +1,64 @@
+include:"pipeline.conf"
+
+# The ultimate output files we want to get
+rule all:
+     input: DERNA + "/htseq.count.table.txt", DEGEN + "/htseq.count.table.txt"
+
+
+# Mapping with bowtie2
+rule run_bowtie2_hairpin:
+     input: READS + "/{sample}.fastq"
+     output: MAPRNA + "/{sample}.sam"
+     threads: 8
+     shell: "bowtie2 --very-sensitive -p 8 -k 10 -x {HAIRPIN_BT2} -U {input} -S {output}"
+
+rule run_bowtie2_genome:
+     input: READS + "/{sample}.fastq"
+     output: MAPGEN + "/{sample}.sam"
+     threads: 8
+     shell: "bowtie2 --very-sensitive -p 8 -k 10 -x {GENOME_BT2} -U {input} -S {output}"
+
+
+# Transform SAM into BAM
+rule samtools_sam2bam_hairpin:
+     input: MAPRNA + "/{sample}.sam"
+     output: MAPRNA + "/{sample}.bam"
+     shell: "samtools view -h -bS {input} -o {output} | rm {input}"
+
+rule samtools_sam2bam_genome:
+     input: MAPGEN + "/{sample}.sam" 
+     output: MAPGEN + "/{sample}.bam"
+     shell: "samtools view -h -bS {input} -o {output} | rm {input}"
+
+
+# Keep only the reads of a certain length in the BAM file
+rule check_length_genome:
+     input: MAPGEN + "/{sample}.bam"
+     output: MAPGEN + "/{sample}" + LIMIT + ".bam"
+     shell: "samtools view -h {input} | java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling samExtractLength -from {LIMIN} -to {LIMAX}  | samtools view -bS -o {output} /dev/stdin"
+
+rule check_length_hairpin:
+     input: MAPRNA + "/{sample}.bam"
+     output: MAPRNA + "/{sample}" + LIMIT + ".bam"
+     shell: "samtools view -h {input} | java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling samExtractLength -from {LIMIN} -to {LIMAX}  | samtools view -bS -o {output} /dev/stdin"
+
+
+# Sort the BAM files
+rule samtools_sort_hairpin:
+     input: MAPRNA + "/{sample}.bam"
+     #input: MAPRNA + "/{sample}" + LIMIT + ".bam"
+     output: MAPRNA + "/{sample}.sort.bam"
+     shell: "samtools sort {input} {MAPRNA}/{wildcards.sample}.sort" 
+
+rule samtools_sort_genome:
+     input: MAPGEN + "/{sample}.bam" 
+     #input: MAPGEN + "/{sample}" + LIMIT + ".bam"
+     output: MAPGEN + "/{sample}.sort.bam"
+     shell: "samtools sort {input} {MAPGEN}/{wildcards.sample}.sort"
+
+
+# Index the sorted BAM files
+rule samtools_index_genome:
+     input: MAPGEN + "/{sample}.sort.bam"     
+     output: MAPGEN + "/{sample}.sort.bam.bai"
+--More--(63%)
