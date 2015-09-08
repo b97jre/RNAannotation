@@ -39,14 +39,18 @@ colnames(ORFinfo)
 
 mRNA <- ggplot(ORFinfo, aes(x = pValue))
 mRNA + geom_density(aes(fill=factor(Class)), size=0.5)+facet_grid(Class ~ .) 
+ggsave("ORF_p_valueDistribution.pdf")
 
 ncRNA <- ggplot(ORFinfo, aes(x = (Rfam_E.value)))
 ncRNA + geom_density(aes(fill=factor(Class)), size=0.5)+facet_grid(Class ~ .) 
+ggsave("RfamDistributoin.pdf")
 
 IPS <- ggplot(ORFinfo, aes(x = (IPS_E.value)))
 IPS + geom_density(aes(fill=factor(Class)), size=0.5)+facet_grid(Class ~ .) 
+ggsave("InterProScanDistribution.pdf")
 
 expressionLevel <- ggplot(ORFinfo, aes(x = log(SC_human_index1.idxstats,base = 10)))
 expressionLevel + geom_density(aes(fill=factor(Class)), size=0.5)+facet_grid(Class ~ .) 
+ggsave("ExpressionDistribution.pdf")
 
 
