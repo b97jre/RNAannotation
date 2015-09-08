@@ -56,13 +56,7 @@ code:
 ##Rfam using Infernall
 
 
-```
 
-module load bioinfo-tools
-module load hmmer/3.1b1-gcc
-
-hmmscan --tblout test_0.PfamAB.hmm.hmmer /glob/johanr/references/Pfam/PfamAB.hmm test.fa
-```
 
 ##Pfam using HMMer
 
@@ -75,6 +69,13 @@ hmmscan --tblout test_0.PfamAB.hmm.hmmer /glob/johanr/references/Pfam/PfamAB.hmm
   fastaFile.PfamAB.hmm.hmmer 
 
 
+```
+
+module load bioinfo-tools
+module load hmmer/3.1b1-gcc
+
+hmmscan --tblout test_0.PfamAB.hmm.hmmer /glob/johanr/references/Pfam/PfamAB.hmm test.fa
+```
 
 
 
