@@ -55,6 +55,14 @@ code:
 
 ##Rfam using Infernall
 
+Information on how to run the latest version of Infernall is found here. 
+
+http://infernal.janelia.org/
+
+Especially the book chapter that goes through every step is found here.
+
+http://selab.janelia.org/publications/Nawrocki13/Nawrocki13-preprint.pdf
+
 
 
 
