@@ -1,0 +1,16 @@
+DATASET = "/pica/v3/b2011098_nobackup/private/rnaClassifiers/ncRNA_pred/f5seqs.fa"
+RES_TABLE = "ncRNA_scan.tbl"
+RES_SEARCH = "ncRNA_scan.cmsearch"
+CMSEARCH = "/glob/johanr/bin/cmsearch"
+RFAM_CMS = "/pica/v3/b2011098_nobackup/private/deNovoAnnotation/references/RFAM/Rfam.cm"
+RESULT = "ncRNA_Results.txt"
+
+rule ncRNA_scan:
+	input: DATASET
+	output: RES_TABLE, RES_SEARCH
+	shell: "{CMSEARCH} --cut_ga --tblout {RES_TABLE} {RFAM_CMS} {DATASET} > {RES_SEARCH}"
+
+rule get_Results:
+	input: RES_TABLE
+	output: RESULT
+	shell: "printf 'Name\tE-Value\n' > {RESULT} | grep -v '^#' {RES_TABLE} | awk '{{print $1,$16}}' >> {RESULT}"
