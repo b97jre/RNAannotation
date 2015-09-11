@@ -1,0 +1,57 @@
+#SnakeMake file
+
+# INPUTS ---
+PATH = ""
+SUFFIX = ".fasta"
+PREFIX = "human.sample123.trinity"
+FASTA = PATH + PREFIX + SUFFIX
+
+PFAMAB = "/glob/johanr/references/Pfam/PfamAB.hmm"
+
+
+# OUTPUTS ---
+ORF_ORFs = PREFIX + ".ORFs" + SUFFIX
+ORF_PEP = PREFIX + ".peptide" + SUFFIX
+ORF_INF = PREFIX + ".info"
+ORF_TABLE = "ORF_table.txt"
+
+PFAM_RAW = PREFIX + ".PfamAB.hmm.hmmer"
+PFAM_TABLE = "PFAM_table.txt"
+ORF_PF_JOIN = "ORF_PFAM_join.txt"
+
+
+# Run ORF finder script
+rule run_ORF_pred:
+	input: FASTA
+	output: ORF_ORFs,ORF_PEP,ORF_INF
+	shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequencehandling orfs -i {input}"
+
+
+# It structures the ORF data with scope to the last table
+rule create_ORF_table:
+	input: ORF_INF
+	output: ORF_TABLE
+	shell: "awk 'NR<2{{$5=$6=$7=\"\"; print; next}}{{$5=$6=$7=\"\";print substr($0,2)|\"sort -k1,1 -k2n\"}}' {input} > {output}"
+
+
+# Run PFAM script (time consuming)
+rule run_PFAM:
+	input: ORF_PEP,PFAMAB
+	output: PFAM_RAW
+	shell: "hmmscan --tblout {output} {input[1]} {input[0]}"
+
+
+# It structures the PFAM data with scope to the last table
+rule create_PFAM_table:
+	input: PFAM_RAW
+	output: PFAM_TABLE
+	shell: "echo -e 'Name\tE-value' > {output} | awk '!a[$3]++' {input} | awk '!/^#/{{sub(/_reverse$/,\"\", $3);sub(/_forward/, \"\", $3); print $3 \"\t\" $5}}' | sort -k1,1 -k2n >> {output}"
+
+
+# Join the ORF and PFAM data with scope to the last table (We could add more tables in this phase...)
+rule join_ORF_PFAM:
+	input: ORF_TABLE,PFAM_TABLE
+	output: ORF_PF_JOIN
+	shell: "join -a1 -o 1.1,1.2,1.3,1.4,1.5,2.2 -e 'NaN' {input[0]} {input[1]} > {output}"
+
+
