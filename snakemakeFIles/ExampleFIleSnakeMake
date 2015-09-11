@@ -1,12 +1,18 @@
 #Snakemake file
 
 
+
+rule grepMrnas:
+  input: READS + "/{sample}.all.info"
+  output: READS+ "/{sample}.mRNA.info"
+  shell : grep mRNA {input} > {output}
+  
 rule check_length_hairpin:
      input: prefix = MAPRNA + "/{sample}.sam" 
      output: expand(MAPRNA + "/{{sample}}.{length}.sam", length = LENGTHS),MAPRNA + "/{sample}. 
      shell: "cat {input} | java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling samSplitLengths -from {LIMIN} -to {LIMAX} -prefix {MAPRNA}/{wildcards.sample}"
 
-     
+      
  # sam2bam
 rule sam2bam:
      input: MAPRNA + "/{sample}.{length}.sam"
