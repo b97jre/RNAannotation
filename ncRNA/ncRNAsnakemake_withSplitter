@@ -1,0 +1,24 @@
+DATASET = "/pica/v3/b2011098_nobackup/private/rnaClassifiers/ncRNA_pred/testRuns/f10seqs.fa"
+CMSEARCH = "/glob/johanr/bin/cmsearch"
+RFAM_CMS = "/pica/v3/b2011098_nobackup/private/deNovoAnnotation/references/RFAM/Rfam.cm"
+RESULT = "ncRNA_Results.txt"
+
+rule split_dataset:
+	input: DATASET
+	output: "tmp/{data_part}.fa"
+	shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling splitSize -i {input} -n 50000 -suffix fa"
+
+rule ncRNA_scan:
+	input: "tmp/{data_part}.fa"
+	output: "{data_part}.tbl", "{data_part}.cmsearch"
+	shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {input} > {output[1]}"
+
+rule populate_Results:
+	input: "{data_part}.tbl"
+	output: temp("{RESULT}")
+	shell: "grep -v '^#' {input} | awk '{{print $1,$16}}' >> {output}"
+
+rule create_Results_table:
+	input: {RESULT}
+	output: "ncRNA_Results_final.txt"
+	shell: "printf 'Name\tRFAM_E-Value\n' > output | cat input >> output"
