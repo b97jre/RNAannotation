@@ -19,7 +19,7 @@ rule all:
 
 rule idxstats:
         input: ResultDir+"/{sample}.sort.bam", ResultDir+"/{sample}.sort.bam.bai"
-        output: expand(ResultDir+"/{sample}.sorted.idxstats", sample= SAMPLE)
+        output: ResultDir+"/{sample}.sorted.idxstats"
         shell: "samtools idxstats {input} > {output}"
 
 rule indexbam:
