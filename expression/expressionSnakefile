@@ -8,9 +8,8 @@ REFfile= "/proj/b2011098/nobackup/private/rnaClassifiers/expression/bindex"
 
 
 #Sample names
-SAMPLE= ["7_111116_AD0341ACXX_137_1_index1_1","7_111116_AD0341ACXX_137_1_index1_2"]
+SAMPLE= "7_111116_AD0341ACXX_137_1_index1_1 7_111116_AD0341ACXX_137_1_index1_2".split()
 
-#sample = "7_111116_AD0341ACXX_137_1_index1_1"
 
 #Paths to result
 ResultDir="/proj/b2011098/nobackup/private/rnaClassifiers/expression"
