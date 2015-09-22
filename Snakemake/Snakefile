@@ -1,3 +1,6 @@
+import os, glob
+include:"pipeline.conf"
+
 # Run rule all
 rule all:
         input: MAIN_DIR + TRAIN_TABLE
@@ -132,3 +135,4 @@ rule join_ALL_with_NCRNA:
         input: ORF_PF_EL_JOIN, NCRNA_TABLE
         output: MAIN_DIR + TRAIN_TABLE
         shell: "join -a1 -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,2.2 -e -1 {input[0]} {input[1]} > {output}"
+
