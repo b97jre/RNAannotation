@@ -98,19 +98,19 @@ rule run_bowtie2_mapping:
 #       shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling splitSize -i {input} -n 1000 -suffix fa"
 
 rule ncRNA_scan:
-        input: expand("{sample}.fa", sample=SAMPLES)
-        output: "{sample}.tbl", "{sample}.cmsearch"
-        shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {wildcards.sample}.fa > {output[1]}"
+	input: expand("{sample}.fa", sample=SAMPLES)
+	output: "{sample}.tbl", "{sample}.cmsearch"
+	shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {wildcards.sample}.fa > {output[1]}"
 
-rule populate_Results:
-        input: expand("{sample}.tbl", sample=SAMPLES)
-        output: temp("temp_res")
-        shell: "grep -v '^#' {input} | awk '{{split($1,a,\":\"); print a[2],$16}}' >> {output}"
+rule ncRNA_populate_Results:
+	input: expand("{sample}.tbl", sample=SAMPLES)
+	output: temp("temp_res")
+	shell: "grep -v '^#' {input} | awk '{{split($1,a,\":\"); if (a[2] == \"\") print a[1],$16; else print a[2],$16; }}' >> {output}"
 
-rule create_Results_table:
-        input: "temp_res"
-        output: NCRNA_TABLE
-        shell: "sort -k1,1 -k2n {input} | printf 'Name\tRFAM_E-Value\n' > {output} | cat {input} >> {output}"
+rule ncRNA_create_Results_table:
+	input: "temp_res"
+	output: NCRNA_TABLE
+	shell: "printf 'Name\tRFAM_E-Value\n' > {output} | sort -k1,1 -k2,2g {input} | awk '!a[$1]++' >> {output}"
 
 # The OUTPUT of your last rule should be the NCRNA_TABLE global variable!
 
