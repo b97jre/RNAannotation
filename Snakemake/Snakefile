@@ -1,0 +1,134 @@
+# Run rule all
+rule all:
+        input: MAIN_DIR + TRAIN_TABLE
+
+
+# Run ORF finder script
+rule run_ORF_pred:
+        input: FASTA
+        output: ORF_ORFs,ORF_PEP,ORF_INF
+        shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequencehandling orfs -i {input}"
+
+
+# It structures the ORF data with scope to the last table
+rule create_ORF_table:
+        input: ORF_INF
+        output: ORF_TABLE
+        shell: "awk 'NR<2{{$5=$6=$7=\"\"; print; next}}{{$5=$6=$7=\"\";print substr($0,2)|\"sort -k1,1 -k2n\"}}' {input} > {output}"
+
+
+# Run PFAM script (time consuming)
+rule run_PFAM:
+        input: ORF_PEP,PFAM_A
+        output: PFAM_RAW
+        shell: "hmmscan --tblout {output} {input[1]} {input[0]}"
+
+
+# It structures the PFAM data with scope to the last table
+rule create_PFAM_table:
+        input: PFAM_RAW
+        output: PFAM_TABLE
+        shell: "echo -e 'Name\tPFAM_E-value' > {output} | awk '!a[$3]++' {input} | awk '!/^#/{{sub(/_reverse$/,\"\", $3);sub(/_forward/, \"\", $3); print $3 \"\t\" $5}}' | sort -k1,1 -k2n >> {output}"
+
+
+# ================================== EXPRESSION LEVELS ======================================
+
+#rule all:
+#       input: ResultDirIDX+"/expression.txt"
+
+# It structures the expression data with scope to the last table.
+#(ResultDirIDX have to be changed into something more global)
+rule create_sorted_exp:
+        input: EXP_OUT + "expression.txt"
+        output: INTERMED + "sorted_exp.txt"
+        shell: "echo -e 'Name\tExp_level' > {output} | sort -k1,1 -k2n {input} >> {output}"
+
+# This rule can be used instead of "expression_contig" + "create_sorted_exp". (Test it First)
+#(ResultDirIDX for the OUTPUT have to be changed into something more global)
+#rule expression_contig:
+#       input: expand(IDX_OUT+"{sample}.sorted.idxstats",sample = SAMPLE)
+#       output: EXP_OUT+"expression.txt"
+#       shell: "echo -e 'Name\tExp_level' > {output} | awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {IDX_OUT}/* | sort -k1,1 -k2n >> {output}"
+
+#(ResultDirIDX for the OUTPUT have to be changed into something more global)
+rule expression_contig:
+        input: expand(IDX_OUT + "{sample}.sorted.idxstats",sample =READSsample)
+        output: EXP_OUT + "expression.txt"
+        shell: "awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {IDX_OUT}/* > {output}"
+
+rule idxstats:
+        input: EXP_OUT+"{sample}.sort.bam", EXP_OUT+"{sample}.sort.bam.bai"
+        output: IDX_OUT+"{sample}.sorted.idxstats"
+        shell: "samtools idxstats {input} > {output}"
+
+rule indexbam:
+        input: EXP_OUT+"{sample}.sort.bam"
+        output: EXP_OUT+"{sample}.sort.bam.bai"
+        shell: "samtools index {input}"
+
+rule sortbam:
+        input: EXP_OUT+"{sample}.bam"
+        output: EXP_OUT+"{sample}.sort.bam"
+        shell: "samtools sort {input} {EXP_OUT}{wildcards.sample}.sort"
+
+rule sam2bam:
+        input: EXP_OUT+"{sample}.sam"
+        output: EXP_OUT+"{sample}.bam"
+        shell: "samtools view -bSh -o {output} {input}"
+
+rule run_bowtie2_mapping:
+        input: READS_DIR+"{sample}.fastq"
+        output: EXP_OUT+"{sample}.noHIT.1.fastq", EXP_OUT+"{sample}.noHIT.2.fastq", EXP_OUT+"{sample}.sam"
+        threads: 16
+        shell: "bowtie2 --threads 16 -x {REFfile} -1 -U {input} --un-conc {EXP_OUT}{wildcards.sample}.noHIT.fastq -S {EXP_OUT}{wildcards.sample}.sam"
+
+
+# ==================================== ncRNA ========================================
+# Input: FASTA
+
+#rule all:
+#       input: NCRNA_TABLE
+
+#       rule split_dataset:
+#       input: DATASET
+#       output: expand("{sample}.fa", sample=SAMPLES)
+#       shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling splitSize -i {input} -n 1000 -suffix fa"
+
+rule ncRNA_scan:
+        input: expand("{sample}.fa", sample=SAMPLES)
+        output: "{sample}.tbl", "{sample}.cmsearch"
+        shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {wildcards.sample}.fa > {output[1]}"
+
+rule populate_Results:
+        input: expand("{sample}.tbl", sample=SAMPLES)
+        output: temp("temp_res")
+        shell: "grep -v '^#' {input} | awk '{{split($1,a,\":\"); print a[2],$16}}' >> {output}"
+
+rule create_Results_table:
+        input: "temp_res"
+        output: NCRNA_TABLE
+        shell: "sort -k1,1 -k2n {input} | printf 'Name\tRFAM_E-Value\n' > {output} | cat {input} >> {output}"
+
+# The OUTPUT of your last rule should be the NCRNA_TABLE global variable!
+
+# ================================== GATHERING ======================================
+
+
+# Join the ORF with PFAM data with scope to the last table.
+rule join_ORF_PFAM:
+        input: ORF_TABLE,PFAM_TABLE
+        output: ORF_PF_JOIN
+        shell: "join -a1 -o 1.1,1.2,1.3,1.4,1.5,2.2 -e -1 {input[0]} {input[1]} > {output}"
+
+
+# Join the ORF and PFAM with Expression Level data, with scope to the last table.
+rule join_ORF_PF_ExLev:
+        input: ORF_PF_JOIN, INTERMED + "sorted_exp.txt"
+        output: ORF_PF_EL_JOIN
+        shell: "join {input[0]} {input[1]} > {output}"
+
+# Join the ORF, PFAM and Expression Level with ncRNA data, with scope to the last table.
+rule join_ALL_with_NCRNA:
+        input: ORF_PF_EL_JOIN, NCRNA_TABLE
+        output: MAIN_DIR + TRAIN_TABLE
+        shell: "join -a1 -o 1.1,1.2,1.3,1.4,1.5,1.6,1.7,2.2 -e -1 {input[0]} {input[1]} > {output}"
