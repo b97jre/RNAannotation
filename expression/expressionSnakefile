@@ -1,0 +1,44 @@
+#include:"pipeline.conf"
+
+#Path to the reads directory
+ReadsDir= "/proj/b2011098/nobackup/private/deNovoAnnotation/reads/human"
+
+#Path to reference file
+REFfile= "/proj/b2011098/nobackup/private/rnaClassifiers/expression/bindex"
+
+
+#Sample names
+SAMPLE= "7_111116_AD0341ACXX_137_1_index1_1 7_111116_AD0341ACXX_137_1_index1_2".split()
+
+
+#Paths to result
+ResultDir="/proj/b2011098/nobackup/private/rnaClassifiers/expression"
+
+rule all:
+        input: expand(ResultDir+"/{sample}.sorted.idxstats", sample = SAMPLE)
+
+rule idxstats:
+        input: ResultDir+"/{sample}.sort.bam", ResultDir+"/{sample}.sort.bam.bai"
+        output: ResultDir+"/{sample}.sorted.idxstats"
+        shell: "samtools idxstats {input} > {output}"
+
+rule indexbam:
+        input: ResultDir+"/{sample}.sort.bam"
+        output: ResultDir+"/{sample}.sort.bam.bai"
+        shell: "samtools index {input}"
+
+rule sortbam:
+        input: ResultDir+"/{sample}.bam"
+        output: ResultDir+"/{sample}.sort.bam"
+        shell: "samtools sort {input} {ResultDir}/{sample}.sort"
+
+rule sam2bam:
+        input: ResultDir+"/{sample}.sam"
+        output: ResultDir+"/{sample}.bam"
+        shell: "samtools view -bSh -o {output} {input}"
+
+rule run_bowtie2_mapping:
+        input: ReadsDir+"/{sample}.fastq"
+        output: ResultDir+"/{sample}.noHIT.1.fastq", ResultDir+"/{sample}.noHIT.2.fastq", ResultDir+"{sample}.sam"
+        threads: 16
+        shell: "bowtie2 --threads 16 -x {REFfile} -1 -U {input} --un-conc {ResultDir}/{sample}.noHIT.fastq -S {ResultDir}/{sample}.sam"
