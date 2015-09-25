@@ -7,6 +7,7 @@ The intent in the end is to run it on a set of RNA reads with meta information b
 To get all the information to run the classifier we are using multiple other software. These should be installed before you can run the classifier. 
 
 The program requires some steps. 
+
 1. Create a table with the read files that you will use to identify the expression of the reads.This can be automatically done using a script. For more info see below. 
 2. Run a Script that sets up the entirepath structure and makes sure that all the path names are correct.
 3. Start the snakemake file that will run the pipeline from a set of reads and a file of contigs to get the data that you want and then categorize the contigs into coding, non-coding and other RNAs.
@@ -15,7 +16,7 @@ The program requires some steps.
 
 
 ##Create read table
-Will create a table with all the files that is below the **/path/to/reads/** that contains the suffix **fastq**. For paired end reads the flag **-suffix** has to be set and should contain the end of the files that seperates the files with the pairs of reads. 
+Will create a table with all the files that is below the **/path/to/reads/** that contains the suffix  specified by **-suffix**. For paired end reads the flag **-sep** has to be set and should contain the end of the files that seperates the files with the pairs of reads. The names of the reads will be the part that is not covered by the suffix. 
 
 **Code:**
 
@@ -61,24 +62,23 @@ java -jar /glob/johanr/bin/SnakeMakeSetup.jar -p RNACLASSIFIER -wd /path/to/wher
 
 
 **out:**
-1. **pipeline.conf**
 
-2. Correct folder strutcture with soft links to files 
-testrun
-testrun/pipeline.conf
-testrun/reads
-testrun/reads/reads1.1.fastq
-testrun/reads/reads1.2.fastq
-testrun/reads/reads2.1.fastq
-testrun/reads/reads2.2.fastq
-testrun/reference
-testrun/reference/fasta
-testrun/reference/fasta/contigs.fa
-testrun/reference/fasta/tmp
-testrun/reference/fasta/tmp/contigs_0.fa
-..
+1.  **pipeline.conf**
+2.  Correct folder strutcture with soft links to files 
+3.  Contig file split up in smaller subset files of ~ 100 000 nt per file.
 
 
-3. Contig file split up in smaller subset files of ~ 100 000 nt per file.
+  * testrun
+     * pipeline.conf
+     * reads
+        * reads1.1.fastq
+        * ..
+     * reference
+        * fasta
+          * contigs.fa
+          * /tmp
+            * contigs_0.fa
+            * ..
+
 
 newly created folder structure that will contain the information that is needed 
