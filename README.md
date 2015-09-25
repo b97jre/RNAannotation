@@ -1,11 +1,6 @@
-This is a github created for scripts that can help out in analysing de novo assembled transcriptomes.
-
-For each script or file that is generated please write a nice markdown
-
-https://help.github.com/articles/github-flavored-markdown/
 
 
-This is the steps to run the RNA classifier.
+#This is the steps to run the RNA classifier.
 
 The intent in the end is to run it on a set of RNA reads with meta information but right now we are trying to set it  up so that it takes a contigfile.
 
