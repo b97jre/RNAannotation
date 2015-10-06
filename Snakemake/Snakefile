@@ -3,20 +3,24 @@ include:"pipeline.conf"
 
 # Run rule all
 rule all:
-        input: MAIN_DIR + TRAIN_TABLE
+        input:MAIN_DIR+TRAIN_TABLE 
 
+rule copy_fasta:
+        input: PREFIX+SUFFIX
+        output: ORF_PFAM_OUT+PREFIX+SUFFIX
+        shell: "cp {input} {output}"
 
 # Run ORF finder script
 rule run_ORF_pred:
-        input: FASTA
+        input: ORF_PFAM_OUT+PREFIX+SUFFIX
         output: ORF_ORFs,ORF_PEP,ORF_INF
-        shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequencehandling orfs -i {input}"
+        shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequencehandling orfs -i {input} "
 
 
 # It structures the ORF data with scope to the last table
-rule create_ORF_table:
+rule create_ORF_temp_table:
         input: ORF_INF
-        output: ORF_TABLE
+        output: ORF_TEMP_TABLE
         shell: "awk 'NR<2{{$5=$6=$7=\"\"; print; next}}{{$5=$6=$7=\"\";print substr($0,2)|\"sort -k1,1 -k2n\"}}' {input} > {output}"
 
 
@@ -26,64 +30,77 @@ rule run_PFAM:
         output: PFAM_RAW
         shell: "hmmscan --tblout {output} {input[1]} {input[0]}"
 
+# pipiline.conf add --> TEMP1 = INTERMED + "temp.txt"
+rule feedback_ORF_step1:
+        input: PFAM_RAW
+        output: TEMP1
+        shell: "awk '!a[$3]++' {input} | awk '!/^#/{{if($3 ~ /_forward/ || /_reverse/) {{n=split($3, array,\"_\"); sub(/_forward|_reverse/, \"\", $3); print $3 \" \" array[n] \" \" $5}}}}' | sort -k1,1 -k3g | awk '!a[$1]++' > {output}"
+
+# pipiline.conf add --> TEMP2 = INTERMED + "temp2.txt"
+rule feedback_ORF_step2:
+        input: ORF_TEMP_TABLE, TEMP1
+        output: TEMP2
+        shell: "awk 'FNR==NR{{if($2 ~ /forward/) a[$1]++;next}} {{if(a[$1]) {{print $1 \" 1 \" $3 \" \" $4 \" \" $5}}}}' {input[1]} {input[0]} > {output} | awk 'FNR==NR{{if($2 ~ /reverse/) a[$1]++i;next}} {{if(a[$1]) {{print $1 \" -1 \" $3 \" \" $4 \" \" $5}}}}' {input[1]} {input[0]} >> {output}"
+
+
+rule feedback_ORF_step3:
+        input: ORF_TEMP_TABLE, TEMP2
+        output: ORF_TABLE
+        shell: "awk 'FNR==NR{{a[$1]=$0;next}} $1 in a{{print a[$1]}} !($1 in a){{print $0}}' {input[1]} {input[0]} > {output}"
 
 # It structures the PFAM data with scope to the last table
 rule create_PFAM_table:
         input: PFAM_RAW
         output: PFAM_TABLE
-        shell: "echo -e 'Name\tPFAM_E-value' > {output} | awk '!a[$3]++' {input} | awk '!/^#/{{sub(/_reverse$/,\"\", $3);sub(/_forward/, \"\", $3); print $3 \"\t\" $5}}' | sort -k1,1 -k2n >> {output}"
+        shell: "echo -e 'Name\tPFAM_E-value' > {output} | awk '!a[$3]++' {input} | awk '!/^#/{{sub(/_reverse$/,\"\", $3);sub(/_forward/, \"\", $3); print $3 \"\t\" $5}}' | sort -k1,1 -k2g | awk '!a[$1]++' >> {output}"
 
 
 # ================================== EXPRESSION LEVELS ======================================
 
-#rule all:
-#       input: ResultDirIDX+"/expression.txt"
+#Creates Bowtie2 reference from fasta file
+rule create_bowtie2_reference:
+        input: FASTA
+        output: BowtieRef+".1.bt2", BowtieRef+".rev.1.bt2", BowtieRef+".2.bt2", BowtieRef+".rev.2.bt2", BowtieRef+".3.bt2", BowtieRef+".4.bt2"
+        shell: "bowtie2-build {FASTA} {BowtieRef}"
 
-# It structures the expression data with scope to the last table.
-#(ResultDirIDX have to be changed into something more global)
-rule create_sorted_exp:
-        input: EXP_OUT + "expression.txt"
-        output: INTERMED + "sorted_exp.txt"
-        shell: "echo -e 'Name\tExp_level' > {output} | sort -k1,1 -k2n {input} >> {output}"
-
-# This rule can be used instead of "expression_contig" + "create_sorted_exp". (Test it First)
-#(ResultDirIDX for the OUTPUT have to be changed into something more global)
-#rule expression_contig:
-#       input: expand(IDX_OUT+"{sample}.sorted.idxstats",sample = SAMPLE)
-#       output: EXP_OUT+"expression.txt"
-#       shell: "echo -e 'Name\tExp_level' > {output} | awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {IDX_OUT}/* | sort -k1,1 -k2n >> {output}"
-
-#(ResultDirIDX for the OUTPUT have to be changed into something more global)
-rule expression_contig:
-        input: expand(IDX_OUT + "{sample}.sorted.idxstats",sample =READSsample)
-        output: EXP_OUT + "expression.txt"
-        shell: "awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {IDX_OUT}/* > {output}"
-
+#Maps pair end reads with bowtie2
+rule run_bowtie2_PairedEnd_mapping:
+        input: READS_DIR+ "{samples}_1.fastq",READS_DIR+"{samples}_2.fastq", BowtieRef+".1.bt2"
+        output: EXP_OUT+"{samples}.sam"
+        threads: 16
+        shell: "bowtie2 --threads 16 -x {BowtieRef} -1 {READS_DIR}{wildcards.samples}_1.fastq -2 {READS_DIR}{wildcards.samples}_2.fastq -S {output}"
+rule sam2bam:
+        input: EXP_OUT+"{samples}.sam"
+        output: EXP_OUT+"{samples}.bam"
+        shell: "samtools view -bSh -o {EXP_OUT}{wildcards.samples}.bam {EXP_OUT}{wildcards.samples}.sam"
+#Sorts bam files
+rule sortbam:
+        input:EXP_OUT+"{samples}.bam"
+        output:EXP_OUT+"{samples}.sort.bam"
+        shell: "samtools sort {EXP_OUT}{wildcards.samples}.bam {EXP_OUT}{wildcards.samples}.sort"
+#Index bam files
+rule indexbam:
+        input: EXP_OUT+"{samples}.sort.bam"
+        output: EXP_OUT+"{samples}.sort.bam.bai"
+        shell: "samtools index {input}"
+#Create idxstats for a bam file
 rule idxstats:
-        input: EXP_OUT+"{sample}.sort.bam", EXP_OUT+"{sample}.sort.bam.bai"
-        output: IDX_OUT+"{sample}.sorted.idxstats"
+        input: EXP_OUT+"{samples}.sort.bam",EXP_OUT+ "{samples}.sort.bam.bai",
+        output: IDX_OUT+"{samples}.sorted.idxstats"
         shell: "samtools idxstats {input} > {output}"
 
-rule indexbam:
-        input: EXP_OUT+"{sample}.sort.bam"
-        output: EXP_OUT+"{sample}.sort.bam.bai"
-        shell: "samtools index {input}"
+# Takes all the samples and sum them into one table with the (#reads/seqlength)/#samples as one column and contig name as another
+rule expression_contig:
+        input:expand(IDX_OUT+"{samples}.sorted.idxstats", samples= SAMPLE)  
+        output: EXP_OUT+"expression.txt"
+        shell: "printf 'Name\tExp_level'|awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {IDX_OUT}* | sort -k1,1 -k2n >> {output}"
 
-rule sortbam:
-        input: EXP_OUT+"{sample}.bam"
-        output: EXP_OUT+"{sample}.sort.bam"
-        shell: "samtools sort {input} {EXP_OUT}{wildcards.sample}.sort"
+#Sorts the expression table so it has same sort as the other tables
+rule create_sorted_exp:
+        input: EXP_OUT+"expression.txt"
+        output: INTERMED+"sorted_exp.txt"
+        shell: "echo -e 'Name\tExp_level' > {output} | sort -k1,1 -k2n {input} >> {output}"
 
-rule sam2bam:
-        input: EXP_OUT+"{sample}.sam"
-        output: EXP_OUT+"{sample}.bam"
-        shell: "samtools view -bSh -o {output} {input}"
-
-rule run_bowtie2_mapping:
-        input: READS_DIR+"{sample}.fastq"
-        output: EXP_OUT+"{sample}.noHIT.1.fastq", EXP_OUT+"{sample}.noHIT.2.fastq", EXP_OUT+"{sample}.sam"
-        threads: 16
-        shell: "bowtie2 --threads 16 -x {REFfile} -1 -U {input} --un-conc {EXP_OUT}{wildcards.sample}.noHIT.fastq -S {EXP_OUT}{wildcards.sample}.sam"
 
 
 # ==================================== ncRNA ========================================
@@ -94,25 +111,23 @@ rule run_bowtie2_mapping:
 
 #       rule split_dataset:
 #       input: DATASET
-#       output: expand("{sample}.fa", sample=SAMPLES)
-#       shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling splitSize -i {input} -n 1000 -suffix fa"
+#       output: expand("{sample}.fasta", sample=SAMPLES)
+#       shell: "java -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling splitSize -i {input} -suffix fasta"
 
 rule ncRNA_scan:
-        input: expand("{sample}.fa", sample=SAMPLES)
+        input: expand("{sample}.fasta", sample=SAMPLES)
         output: "{sample}.tbl", "{sample}.cmsearch"
-        shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {wildcards.sample}.fa > {output[1]}"
+        shell: "{CMSEARCH} --cut_ga --tblout {output[0]} {RFAM_CMS} {wildcards.sample}.fasta > {output[1]}"
 
-rule populate_Results:
+rule ncRNA_populate_Results:
         input: expand("{sample}.tbl", sample=SAMPLES)
         output: temp("temp_res")
-        shell: "grep -v '^#' {input} | awk '{{split($1,a,\":\"); print a[2],$16}}' >> {output}"
+        shell: "grep -v '^#' {input} | awk '{{split($1,a,\":\"); if (a[2] == \"\") print a[1],$16; else print a[2],$16; }}' >> {output}"
 
-rule create_Results_table:
+rule ncRNA_create_Results_table:
         input: "temp_res"
         output: NCRNA_TABLE
-        shell: "sort -k1,1 -k2n {input} | printf 'Name\tRFAM_E-Value\n' > {output} | cat {input} >> {output}"
-
-# The OUTPUT of your last rule should be the NCRNA_TABLE global variable!
+        shell: "printf 'Name\tRFAM_E-Value\n' > {output} | sort -k1,1 -k2,2g {input} | awk '!a[$1]++' >> {output}"
 
 # ================================== GATHERING ======================================
 
