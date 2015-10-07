@@ -51,7 +51,7 @@ RfamLib|/path/to/Rfam.cm|RFAM library that will be used to find potential ncRNAs
 cmsearchPath|/path/to/cmsearch|location of cmsearch program
 #ProteinInfo||
 ORFfinderPath|/path/to/HTStools.jar|Jar file for the ORF path finder
-PfamLib|/path/to/Pfam-A.hmm"|PFAM library that will be used to find potential protein domains
+PfamLib|/path/to/Pfam-A.hmm|PFAM library that will be used to find potential protein domains
 hmmerPath|/path/to/hmmscan|Location of hmmer program 
 
 **code:**
