@@ -5,7 +5,7 @@
 #SBATCH -t 80:00:00
 #SBATCH -J Snakemake
 #SBATCH --mail-type=All
-#SBATCH --mail-user olofsson.anna12@gmail.com
+#SBATCH --mail-user someone@somemail.com
 
 module load bioinfo-tools
 module load bowtie2
