@@ -1,0 +1,48 @@
+import glob, os
+
+include: "pipeline.conf"
+
+rule all:
+       input: ResultDirIDX+"sorted_exp.txt"
+
+rule create_sorted_exp:
+	input: ResultDirIDX+"expression.txt"
+	output: ResultDirIDX+"sorted_exp.txt"
+	shell: "echo -e 'Name\tExp_level' > {output} | sort -k1,1 -k2n {input} >> {output}" 
+
+rule expression_contig:
+	input: expand(ResultDirIDX+"{sample}.sorted.idxstats",sample = SAMPLE)
+	output: ResultDirIDX+"expression.txt"
+	shell: "printf 'Name\tExp_level'|awk '{{mapped[FNR]+=$3; contigid[FNR]= $1; seqlen[FNR]= $2}} END{{for(i=1;i<=FNR-1;i++) print contigid[i], (mapped[i]/(ARGC-1))/seqlen[i];}}' {ResultDirIDX}* | sort -k1,1 -k2n >> {output}"	
+
+
+rule idxstats:
+        input: ResultDirNoHit+"{sample}.sort.bam",ResultDirNoHit+ "{sample}.sort.bam.bai"
+        output: ResultDirIDX+"{sample}.sorted.idxstats"
+        shell: "samtools idxstats {input} > {output}"
+
+rule indexbam:
+        input: ResultDirNoHit+"{sample}.sort.bam"
+        output: ResultDirNoHit+"{sample}.sort.bam.bai"
+        shell: "samtools index {input}"
+
+rule sortbam:
+        input:ResultDirNoHit+"{sample}.bam"
+        output:ResultDirNoHit+"{sample}.sort.bam"
+        shell: "samtools sort {ResultDirNoHit}{wildcards.sample}.bam {ResultDirNoHit}{wildcards.sample}.sort"
+
+rule sam2bam:
+        input: ResultDirNoHit+"{sample}.sam" 
+        output: ResultDirNoHit+"{sample}.bam"
+        shell: "samtools view -bSh -o {ResultDirNoHit}{wildcards.sample}.bam {ResultDirNoHit}{wildcards.sample}.sam"
+
+rule create_bowtie2_reference:
+        input: FASTA
+        output: BowtieRef+".1.bt2", BowtieRef+".rev.1.bt2", BowtieRef+".2.bt2", BowtieRef+".rev.2.bt2", BowtieRef+".3.bt2", BowtieRef+".4.bt2"
+        shell: "bowtie2-build {FASTA} {BowtieRef}"
+
+rule run_bowtie2_PairedEnd_mapping:
+	input:ReadsDir+ "{sample}_1.fastq",ReadsDir+"{sample}_2.fastq", BowtieRef+".1.bt2"
+        output: ResultDirNoHit+"{sample}.sam"
+        threads: 16
+        shell: "bowtie2 --threads 16 -x {BowtieRef} -1 {ReadsDir}{wildcards.sample}_1.fastq -2 {ReadsDir}{wildcards.sample}_2.fastq -S {ResultDirNoHit}{wildcards.sample}.sam"

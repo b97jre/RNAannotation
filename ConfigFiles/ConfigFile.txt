@@ -1,0 +1,14 @@
+Key	Value	Comment
+#Reads info		
+ReadsSuffix	.fastq	End of reads file in below reads directory 
+readsTable	/Users/johanreimegard/Vetenskap/Data/deNovoAnnotation/reads.table.txt	Table with reads info	
+#ReferenceInfo		
+ReferenceFile	/Users/johanreimegard/Vetenskap/Data/deNovoAnnotation/refFile.fa	Reference file
+ReferenceSuffix	.fa	End of reference file (most likely .fa or .fasta)
+#Rfaminfo		
+RfamLib	/pica/v3/b2011098_nobackup/private/deNovoAnnotation/references/RFAM/Rfam.cm	Library that will be used to find potential RNA targets
+cmsearchPath	/glob/johanr/bin/cmsearch	location of cmsearch program
+#ProteinInfo		
+ORFfinderPath	/glob/johanr/bin/HTStools.jar	Jar file for the ORF path finder
+PfamLib	/proj/b2011098/nobackup/private/rnaClassifiers/ORF_pred/PFAM/Pfam-A.hmm"	Library with known protein domains
+hmmerPath	hmmscan	Location of hmmer program 
